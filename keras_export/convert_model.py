@@ -11,7 +11,7 @@ import json
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import backend as K
-from tensorflow.keras.layers import Input, Embedding, CategoryEncoding
+from tensorflow.keras.layers import CategoryEncoding, Embedding, Input
 from tensorflow.keras.models import Model, load_model
 
 __author__ = "Tobias Hermann"
@@ -51,7 +51,9 @@ def transform_kernels(kernels, n_gates, transform_func):
     numpy.ndarray
         Transformed composite matrix of input or recurrent kernels in C-contiguous layout.
     """
-    return np.require(np.hstack([transform_func(kernel) for kernel in np.hsplit(kernels, n_gates)]), requirements='C')
+    return np.require(np.hstack(
+        [transform_func(kernel) for kernel in np.hsplit(kernels, n_gates)]),
+                      requirements='C')
 
 
 def transform_bias(bias):
@@ -78,10 +80,7 @@ def get_layer_input_shape_tensor_shape(layer):
 
 def show_tensor(tens):
     """Serialize 3-tensor to a dict"""
-    return {
-        'shape': tens.shape[1:],
-        'values': encode_floats(tens.flatten())
-    }
+    return {'shape': tens.shape[1:], 'values': encode_floats(tens.flatten())}
 
 
 def get_model_input_layers(model):
@@ -133,7 +132,8 @@ def are_embedding_layer_positions_ok_for_testing(model):
                 result.add(input_layer._outbound_nodes[0].outbound_layer.name)
         return set(result)
 
-    return embedding_layer_names(model) == embedding_layer_names_at_input_nodes(model)
+    return embedding_layer_names(
+        model) == embedding_layer_names_at_input_nodes(model)
 
 
 def gen_test_data(model):
@@ -153,22 +153,27 @@ def gen_test_data(model):
         if input_layer._outbound_nodes and isinstance(
                 input_layer._outbound_nodes[0].outbound_layer, Embedding):
             random_fn = lambda size: np.random.randint(
-                0, input_layer._outbound_nodes[0].outbound_layer.input_dim, size)
+                0, input_layer._outbound_nodes[0].outbound_layer.input_dim,
+                size)
         elif input_layer._outbound_nodes and isinstance(
-                input_layer._outbound_nodes[0].outbound_layer, CategoryEncoding):
+                input_layer._outbound_nodes[0].outbound_layer,
+                CategoryEncoding):
             random_fn = lambda size: np.random.randint(
-                0, input_layer._outbound_nodes[0].outbound_layer.num_tokens, size)
+                0, input_layer._outbound_nodes[0].outbound_layer.num_tokens,
+                size)
         else:
             random_fn = np.random.normal
         try:
             shape = input_layer.batch_input_shape
         except AttributeError:
             shape = input_layer.input_shape
-        return random_fn(
-            size=replace_none_with(32, set_shape_idx_0_to_1_if_none(singleton_list_to_value(shape)))).astype(np.float32)
+        return random_fn(size=replace_none_with(
+            32, set_shape_idx_0_to_1_if_none(singleton_list_to_value(
+                shape)))).astype(np.float32)
 
     assert are_embedding_layer_positions_ok_for_testing(
-        model), "Test data can only be generated if embedding layers are positioned directly after input nodes."
+        model
+    ), "Test data can only be generated if embedding layers are positioned directly after input nodes."
 
     data_in = list(map(generate_input_data, get_model_input_layers(model)))
 
@@ -235,9 +240,7 @@ def show_conv_1d_layer(layer):
     assert layer.padding in ['valid', 'same', 'causal']
     assert len(layer.input_shape) == 3
     assert layer.input_shape[0] in {None, 1}
-    result = {
-        'weights': encode_floats(weights_flat)
-    }
+    result = {'weights': encode_floats(weights_flat)}
     if len(weights) == 2:
         bias = weights[1]
         result['bias'] = encode_floats(bias)
@@ -253,9 +256,7 @@ def show_conv_2d_layer(layer):
     assert layer.padding in ['valid', 'same']
     assert len(layer.input_shape) == 4
     assert layer.input_shape[0] in {None, 1}
-    result = {
-        'weights': encode_floats(weights_flat)
-    }
+    result = {'weights': encode_floats(weights_flat)}
     if len(weights) == 2:
         bias = weights[1]
         result['bias'] = encode_floats(bias)
@@ -343,9 +344,7 @@ def show_dense_layer(layer):
     assert len(weights) == 1 or len(weights) == 2
     assert len(weights[0].shape) == 2
     weights_flat = weights[0].flatten()
-    result = {
-        'weights': encode_floats(weights_flat)
-    }
+    result = {'weights': encode_floats(weights_flat)}
     if len(weights) == 2:
         bias = weights[1]
         result['bias'] = encode_floats(bias)
@@ -355,7 +354,8 @@ def show_dense_layer(layer):
 def show_dot_layer(layer):
     """Check valid configuration of Dot layer"""
     assert len(layer.input_shape) == 2
-    assert isinstance(layer.axes, int) or (isinstance(layer.axes, list) and len(layer.axes) == 2)
+    assert isinstance(layer.axes, int) or (isinstance(layer.axes, list)
+                                           and len(layer.axes) == 2)
     assert layer.input_shape[0][0] is None
     assert layer.input_shape[1][0] is None
     assert len(layer.output_shape) <= 5
@@ -366,9 +366,7 @@ def show_prelu_layer(layer):
     weights = layer.get_weights()
     assert len(weights) == 1
     weights_flat = weights[0].flatten()
-    result = {
-        'alpha': encode_floats(weights_flat)
-    }
+    result = {'alpha': encode_floats(weights_flat)}
     return result
 
 
@@ -376,9 +374,7 @@ def show_embedding_layer(layer):
     """Serialize Embedding layer to dict"""
     weights = layer.get_weights()
     assert len(weights) == 1
-    result = {
-        'weights': encode_floats(weights[0])
-    }
+    result = {'weights': encode_floats(weights[0])}
     return result
 
 
@@ -390,8 +386,10 @@ def show_lstm_layer(layer):
     if isinstance(layer.input, list):
         assert len(layer.input) in [1, 3]
     assert len(weights) == 2 or len(weights) == 3
-    result = {'weights': encode_floats(weights[0]),
-              'recurrent_weights': encode_floats(weights[1])}
+    result = {
+        'weights': encode_floats(weights[0]),
+        'recurrent_weights': encode_floats(weights[1])
+    }
 
     if len(weights) == 3:
         result['bias'] = encode_floats(weights[2])
@@ -406,8 +404,10 @@ def show_gru_layer(layer):
     assert not layer.return_state
     weights = layer.get_weights()
     assert len(weights) == 2 or len(weights) == 3
-    result = {'weights': encode_floats(weights[0]),
-              'recurrent_weights': encode_floats(weights[1])}
+    result = {
+        'weights': encode_floats(weights[0]),
+        'recurrent_weights': encode_floats(weights[1])
+    }
 
     if len(weights) == 3:
         result['bias'] = encode_floats(weights[2])
@@ -428,11 +428,14 @@ def show_cudnn_lstm_layer(layer):
     assert len(weights) == 3  # CuDNN LSTM always has a bias
 
     n_gates = 4
-    input_weights, recurrent_weights = transform_cudnn_weights(weights[0], weights[1], n_gates)
+    input_weights, recurrent_weights = transform_cudnn_weights(
+        weights[0], weights[1], n_gates)
 
-    result = {'weights': encode_floats(input_weights),
-              'recurrent_weights': encode_floats(recurrent_weights),
-              'bias': encode_floats(transform_bias(weights[2]))}
+    result = {
+        'weights': encode_floats(input_weights),
+        'recurrent_weights': encode_floats(recurrent_weights),
+        'bias': encode_floats(transform_bias(weights[2]))
+    }
 
     return result
 
@@ -443,11 +446,14 @@ def show_cudnn_gru_layer(layer):
     assert len(weights) == 3  # CuDNN GRU always has a bias
 
     n_gates = 3
-    input_weights, recurrent_weights = transform_cudnn_weights(weights[0], weights[1], n_gates)
+    input_weights, recurrent_weights = transform_cudnn_weights(
+        weights[0], weights[1], n_gates)
 
-    result = {'weights': encode_floats(input_weights),
-              'recurrent_weights': encode_floats(recurrent_weights),
-              'bias': encode_floats(weights[2])}
+    result = {
+        'weights': encode_floats(input_weights),
+        'recurrent_weights': encode_floats(recurrent_weights),
+        'bias': encode_floats(weights[2])
+    }
 
     return result
 
@@ -460,8 +466,10 @@ def get_transform_func(layer):
         elif layer.__class__.__name__ == 'CuDNNLSTM':
             n_gates = 4
 
-        input_transform_func = lambda kernels: transform_kernels(kernels, n_gates, transform_input_kernel)
-        recurrent_transform_func = lambda kernels: transform_kernels(kernels, n_gates, transform_recurrent_kernel)
+        input_transform_func = lambda kernels: transform_kernels(
+            kernels, n_gates, transform_input_kernel)
+        recurrent_transform_func = lambda kernels: transform_kernels(
+            kernels, n_gates, transform_recurrent_kernel)
     else:
         input_transform_func = lambda kernels: kernels
         recurrent_transform_func = lambda kernels: kernels
@@ -486,15 +494,23 @@ def show_bidirectional_layer(layer):
     backward_input_transform_func, backward_recurrent_transform_func, backward_bias_transform_func = get_transform_func(
         layer.backward_layer)
 
-    result = {'forward_weights': encode_floats(forward_input_transform_func(forward_weights[0])),
-              'forward_recurrent_weights': encode_floats(forward_recurrent_transform_func(forward_weights[1])),
-              'backward_weights': encode_floats(backward_input_transform_func(backward_weights[0])),
-              'backward_recurrent_weights': encode_floats(backward_recurrent_transform_func(backward_weights[1]))}
+    result = {
+        'forward_weights':
+        encode_floats(forward_input_transform_func(forward_weights[0])),
+        'forward_recurrent_weights':
+        encode_floats(forward_recurrent_transform_func(forward_weights[1])),
+        'backward_weights':
+        encode_floats(backward_input_transform_func(backward_weights[0])),
+        'backward_recurrent_weights':
+        encode_floats(backward_recurrent_transform_func(backward_weights[1]))
+    }
 
     if len(forward_weights) == 3:
-        result['forward_bias'] = encode_floats(forward_bias_transform_func(forward_weights[2]))
+        result['forward_bias'] = encode_floats(
+            forward_bias_transform_func(forward_weights[2]))
     if len(backward_weights) == 3:
-        result['backward_bias'] = encode_floats(backward_bias_transform_func(backward_weights[2]))
+        result['backward_bias'] = encode_floats(
+            backward_bias_transform_func(backward_weights[2]))
 
     return result
 
@@ -511,9 +527,11 @@ def show_softmax_layer(layer):
 
 def show_normalization_layer(layer):
     """Serialize normalization layer to dict"""
-    assert len(layer.axis) <= 1, "Multiple normalization axes are not supported"
+    assert len(
+        layer.axis) <= 1, "Multiple normalization axes are not supported"
     if len(layer.axis) == 1:
-        assert layer.axis[0] in (-1, 1, 2, 3, 4, 5), "Invalid axis for Normalization layer."
+        assert layer.axis[0] in (-1, 1, 2, 3, 4,
+                                 5), "Invalid axis for Normalization layer."
     return {
         'mean': encode_floats(layer.mean),
         'variance': encode_floats(layer.variance)
@@ -566,10 +584,12 @@ def show_multi_head_attention_layer(layer):
     assert len(layer.input_shape) == 3
     assert layer.input_shape[0] is None
     assert layer._output_shape is None
-    assert layer._attention_axes == (1,), "MultiHeadAttention supported only with attention_axes=None"
+    assert layer._attention_axes == (
+        1, ), "MultiHeadAttention supported only with attention_axes=None"
     return {
         'weight_shapes': list(map(lambda w: list(w.shape), layer.weights)),
-        'weights': list(map(lambda w: encode_floats(w.numpy()), layer.weights)),
+        'weights': list(map(lambda w: encode_floats(w.numpy()),
+                            layer.weights)),
     }
 
 
@@ -614,11 +634,14 @@ def show_time_distributed_layer(layer):
         if len(layer.input_shape) == 3:
             input_shape_new = (layer.input_shape[0], layer.input_shape[2])
         elif len(layer.input_shape) == 4:
-            input_shape_new = (layer.input_shape[0], layer.input_shape[2], layer.input_shape[3])
+            input_shape_new = (layer.input_shape[0], layer.input_shape[2],
+                               layer.input_shape[3])
         elif len(layer.input_shape) == 5:
-            input_shape_new = (layer.input_shape[0], layer.input_shape[2], layer.input_shape[3], layer.input_shape[4])
+            input_shape_new = (layer.input_shape[0], layer.input_shape[2],
+                               layer.input_shape[3], layer.input_shape[4])
         elif len(layer.input_shape) == 6:
-            input_shape_new = (layer.input_shape[0], layer.input_shape[2], layer.input_shape[3], layer.input_shape[4],
+            input_shape_new = (layer.input_shape[0], layer.input_shape[2],
+                               layer.input_shape[3], layer.input_shape[4],
                                layer.input_shape[5])
         else:
             raise Exception('Wrong input shape')
@@ -690,8 +713,10 @@ def get_layer_weights(layer, name):
         if name not in result:
             result[name] = {}
 
-        result[name]['td_input_len'] = encode_floats(np.array([len(layer.input_shape) - 1], dtype=np.float32))
-        result[name]['td_output_len'] = encode_floats(np.array([len(layer.output_shape) - 1], dtype=np.float32))
+        result[name]['td_input_len'] = encode_floats(
+            np.array([len(layer.input_shape) - 1], dtype=np.float32))
+        result[name]['td_output_len'] = encode_floats(
+            np.array([len(layer.output_shape) - 1], dtype=np.float32))
     return result
 
 
@@ -711,13 +736,18 @@ def get_all_weights(model, prefix):
         if name in result:
             raise ValueError('duplicate layer name ' + name)
         if layer_type in ['Model', 'Sequential', 'Functional']:
-            result = merge_two_disjunct_dicts(result, get_all_weights(layer, name + '_'))
-        elif layer_type in ['TimeDistributed'] and type(layer.layer).__name__ in ['Model', 'Sequential', 'Functional']:
+            result = merge_two_disjunct_dicts(
+                result, get_all_weights(layer, name + '_'))
+        elif layer_type in ['TimeDistributed'] and type(
+                layer.layer).__name__ in ['Model', 'Sequential', 'Functional']:
             inner_layer = layer.layer
-            result = merge_two_disjunct_dicts(result, get_layer_weights(layer, name))
-            result = merge_two_disjunct_dicts(result, get_all_weights(inner_layer, name + "_"))
+            result = merge_two_disjunct_dicts(result,
+                                              get_layer_weights(layer, name))
+            result = merge_two_disjunct_dicts(
+                result, get_all_weights(inner_layer, name + "_"))
         else:
-            result = merge_two_disjunct_dicts(result, get_layer_weights(layer, name))
+            result = merge_two_disjunct_dicts(result,
+                                              get_layer_weights(layer, name))
     return result
 
 
@@ -778,20 +808,30 @@ def offset_sep_conv2d_eval(depth, padding, x):
     """Perform a separable conv2d on x with a given padding"""
     depthwise_kernel = K.variable(value=np.array([[[[1]] * depth]]),
                                   dtype='float32')
-    pointwise_kernel = K.variable(value=np.array([[[[1]] + [[0]] * (depth - 1)]]),
+    pointwise_kernel = K.variable(value=np.array([[[[1]] + [[0]] * (depth - 1)]
+                                                  ]),
                                   dtype='float32')
-    return K.separable_conv2d(x, depthwise_kernel,
-                              pointwise_kernel, strides=(3, 3), padding=padding)
+    return K.separable_conv2d(x,
+                              depthwise_kernel,
+                              pointwise_kernel,
+                              strides=(3, 3),
+                              padding=padding)
 
 
 def conv2d_offset_max_pool_eval(_, padding, x):
     """Perform a max pooling operation on x"""
-    return K.pool2d(x, (1, 1), strides=(3, 3), padding=padding, pool_mode='max')
+    return K.pool2d(x, (1, 1),
+                    strides=(3, 3),
+                    padding=padding,
+                    pool_mode='max')
 
 
 def conv2d_offset_average_pool_eval(_, padding, x):
     """Perform an average pooling operation on x"""
-    return K.pool2d(x, (1, 1), strides=(3, 3), padding=padding, pool_mode='avg')
+    return K.pool2d(x, (1, 1),
+                    strides=(3, 3),
+                    padding=padding,
+                    pool_mode='avg')
 
 
 def check_operation_offset(depth, eval_f, padding):
@@ -848,7 +888,12 @@ def model_to_fdeep_json(model, no_tests=False):
     # Force creation of underlying functional model.
     # see: https://github.com/fchollet/keras/issues/8136
     # Loss and optimizer type do not matter, since we do not train the model.
-    model.compile(loss='mse', optimizer='sgd')
+    try:
+        model.compile(loss='mse', optimizer='sgd')
+    except TypeError:
+        model.compile(box_loss="ciou",
+                      classification_loss="binary_crossentropy",
+                      optimizer='sgd')
 
     model = convert_sequential_to_model(model)
 
@@ -858,8 +903,10 @@ def model_to_fdeep_json(model, no_tests=False):
     print('Converting model architecture.')
     json_output['architecture'] = json.loads(model.to_json())
     json_output['image_data_format'] = K.image_data_format()
-    json_output['input_shapes'] = list(map(get_layer_input_shape_tensor_shape, get_model_input_layers(model)))
-    json_output['output_shapes'] = list(map(keras_shape_to_fdeep_tensor_shape, as_list(model.output_shape)))
+    json_output['input_shapes'] = list(
+        map(get_layer_input_shape_tensor_shape, get_model_input_layers(model)))
+    json_output['output_shapes'] = list(
+        map(keras_shape_to_fdeep_tensor_shape, as_list(model.output_shape)))
 
     if test_data:
         json_output['tests'] = [test_data]
@@ -907,7 +954,9 @@ def main():
 
     parser = argparse.ArgumentParser(
         prog='frugally-deep model converter',
-        description='Converts models from Keras\' .keras format to frugally-deep\'s .json format.')
+        description=
+        'Converts models from Keras\' .keras format to frugally-deep\'s .json format.'
+    )
     parser.add_argument('input_path', type=str)
     parser.add_argument('output_path', type=str)
     parser.add_argument('--no-tests', action='store_true')
